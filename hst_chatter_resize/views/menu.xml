@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <record id="action_chatter_resize_info" model="ir.actions.client">
+        <field name="name">Chatter Resize</field>
+        <field name="tag">display_notification</field>
+        <field name="params" eval="{
+            'title': 'Chatter Resize',
+            'message': 'Chatter Resize is installed. Open any backend form with chatter and drag the left edge of the chatter panel.',
+            'type': 'success',
+            'sticky': False,
+        }"/>
+    </record>
+    <menuitem id="menu_chatter_resize_root"
+              name="Chatter Resize"
+              sequence="95"
+              web_icon="hst_chatter_resize,static/description/icon.png"
+              action="action_chatter_resize_info"/>
+</odoo>

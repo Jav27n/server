@@ -1,0 +1,225 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<templates xml:space="preserve">
+
+<t t-name="hst_access_audit.Dashboard">
+    <div class="hst_aa_dashboard o_action">
+        <!-- Header -->
+        <div class="hst_aa_header d-flex align-items-center justify-content-between px-3 py-2 bg-white border-bottom">
+            <h4 class="mb-0 fw-bold">
+                <i class="fa fa-shield me-2" style="color:#c0392b;"/>User Access Audit
+            </h4>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-sm btn-outline-secondary" t-on-click="onResetLayout"
+                        title="Reset layout"><i class="fa fa-refresh me-1"/>Reset Layout</button>
+                <button class="btn btn-sm btn-outline-primary" t-on-click="onRefresh">
+                    <i class="fa fa-sync me-1"/>Refresh</button>
+                <input type="text" class="form-control form-control-sm" placeholder="Search users..."
+                       style="max-width:220px;" t-on-input="onSearchInput" t-att-value="state.search"/>
+            </div>
+        </div>
+
+        <!-- Loading -->
+        <div t-if="state.loading" class="d-flex justify-content-center align-items-center" style="height:80vh;">
+            <div class="spinner-border" style="color:#c0392b;" role="status"/>
+        </div>
+
+        <!-- Content -->
+        <div t-if="!state.loading and state.data" class="hst_aa_grid p-2">
+
+            <!-- KPI Cards -->
+            <div class="hst_aa_kpi_row d-flex gap-2 mb-2">
+                <div class="hst_aa_kpi flex-fill">
+                    <div class="text-muted small">INTERNAL USERS</div>
+                    <div class="fw-bold text-primary" style="font-size:1.4rem;">
+                        <t t-out="state.data.kpis.total_internal"/></div>
+                    <div class="small text-muted">active</div>
+                </div>
+                <div class="hst_aa_kpi flex-fill">
+                    <div class="text-muted small">INACTIVE USERS</div>
+                    <div class="fw-bold text-secondary" style="font-size:1.4rem;">
+                        <t t-out="state.data.kpis.inactive_users"/></div>
+                    <div class="small text-muted">archived</div>
+                </div>
+                <div class="hst_aa_kpi flex-fill">
+                    <div class="text-muted small">PORTAL USERS</div>
+                    <div class="fw-bold" style="color:#f39c12; font-size:1.4rem;">
+                        <t t-out="state.data.kpis.portal_users"/></div>
+                    <div class="small text-muted">external</div>
+                </div>
+                <div class="hst_aa_kpi flex-fill hst_aa_kpi_danger">
+                    <div class="text-muted small">ADMINISTRATORS</div>
+                    <div class="fw-bold text-danger" style="font-size:1.4rem;">
+                        <t t-out="state.data.kpis.admin_count"/></div>
+                    <div class="small text-muted">full access</div>
+                </div>
+                <div class="hst_aa_kpi flex-fill">
+                    <div class="text-muted small">SECURITY GROUPS</div>
+                    <div class="fw-bold" style="color:#8e44ad; font-size:1.4rem;">
+                        <t t-out="state.data.kpis.total_groups"/></div>
+                </div>
+            </div>
+
+            <!-- Draggable Grid -->
+            <div class="hst_aa_panels_grid" t-ref="panelsGrid">
+                <t t-foreach="state.panelOrder" t-as="pid" t-key="pid">
+                    <t t-set="layout" t-value="state.layouts[pid]"/>
+                    <div class="hst_aa_drag_panel"
+                         t-att-data-panel-id="pid"
+                         t-attf-style="grid-column: span {{layout.cols}}; grid-row: span {{layout.rows}};"
+                         draggable="true"
+                         t-on-dragstart="(ev) => this.onDragStart(ev, pid)"
+                         t-on-dragover.prevent="(ev) => this.onDragOver(ev)"
+                         t-on-dragleave="(ev) => this.onDragLeave(ev)"
+                         t-on-drop="(ev) => this.onDrop(ev, pid)">
+
+                        <div class="hst_aa_drag_header">
+                            <span class="hst_aa_drag_handle" title="Drag"><i class="fa fa-grip-vertical"/></span>
+                            <span class="hst_aa_drag_title" t-out="getPanelTitle(pid)"/>
+                        </div>
+
+                        <div class="hst_aa_drag_body">
+
+                            <!-- Users by App Chart -->
+                            <canvas t-if="pid === 'users_by_app'" t-ref="appChartCanvas"/>
+
+                            <!-- Top Groups Chart -->
+                            <canvas t-if="pid === 'top_groups'" t-ref="groupChartCanvas"/>
+
+                            <!-- Admin Users -->
+                            <div t-if="pid === 'admin_users'" class="h-100" style="overflow-y:auto;">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr><th>Name</th><th>Login</th><th>Email</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="state.data.admin_users || []" t-as="u" t-key="u.id">
+                                            <tr style="cursor:pointer;" t-on-click="() => this.openUser(u.id)">
+                                                <td class="fw-bold text-danger">
+                                                    <i class="fa fa-user-secret me-1"/>
+                                                    <t t-out="u.name"/>
+                                                </td>
+                                                <td class="text-muted"><t t-out="u.login"/></td>
+                                                <td class="text-muted"><t t-out="u.email"/></td>
+                                            </tr>
+                                        </t>
+                                        <tr t-if="!state.data.admin_users or !state.data.admin_users.length">
+                                            <td colspan="3" class="text-center text-muted py-3">No admin users</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- Recent Users -->
+                            <div t-if="pid === 'recent_users'" class="h-100" style="overflow-y:auto;">
+                                <table class="table table-sm table-hover mb-0">
+                                    <thead class="table-light">
+                                        <tr><th>Name</th><th>Login</th><th>Created</th><th class="text-center">Groups</th></tr>
+                                    </thead>
+                                    <tbody>
+                                        <t t-foreach="state.data.recent_users || []" t-as="u" t-key="u.id">
+                                            <tr style="cursor:pointer;" t-on-click="() => this.openUser(u.id)">
+                                                <td class="fw-bold" style="color:#2c3e50;"><t t-out="u.name"/></td>
+                                                <td class="text-muted"><t t-out="u.login"/></td>
+                                                <td><t t-out="formatDate(u.create_date)"/></td>
+                                                <td class="text-center">
+                                                    <span class="badge bg-primary"><t t-out="u.group_count"/></span>
+                                                </td>
+                                            </tr>
+                                        </t>
+                                        <tr t-if="!state.data.recent_users or !state.data.recent_users.length">
+                                            <td colspan="4" class="text-center text-muted py-3">No recent users</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <!-- User Access Table -->
+                            <div t-if="pid === 'user_table'" class="h-100 d-flex flex-column">
+                                <div class="flex-grow-1" style="overflow-y:auto;">
+                                    <table class="table table-sm table-hover mb-0">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width:30px;"></th>
+                                                <th>User</th>
+                                                <th>Login</th>
+                                                <th>Company</th>
+                                                <th>App Access</th>
+                                                <th class="text-center">Groups</th>
+                                                <th class="text-center">Role</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <t t-foreach="state.data.user_list || []" t-as="u" t-key="u.id">
+                                                <!-- User row -->
+                                                <tr style="cursor:pointer;" t-on-click="() => this.toggleUser(u.id)">
+                                                    <td class="text-center">
+                                                        <i t-attf-class="fa {{this.isUserExpanded(u.id) ? 'fa-chevron-down' : 'fa-chevron-right'}}"
+                                                           style="font-size:0.7rem; color:#999;"/>
+                                                    </td>
+                                                    <td class="fw-bold" style="color:#2c3e50;">
+                                                        <t t-out="u.name"/>
+                                                    </td>
+                                                    <td class="text-muted"><t t-out="u.login"/></td>
+                                                    <td class="text-muted"><t t-out="u.company"/></td>
+                                                    <td>
+                                                        <t t-foreach="u.app_access.slice(0, 4)" t-as="app" t-key="app">
+                                                            <span class="badge bg-light text-dark me-1"
+                                                                  style="font-size:0.6rem; border:1px solid #dee2e6;">
+                                                                <t t-out="app"/>
+                                                            </span>
+                                                        </t>
+                                                        <span t-if="u.app_access.length > 4"
+                                                              class="badge bg-secondary" style="font-size:0.55rem;">
+                                                            +<t t-out="u.app_access.length - 4"/>
+                                                        </span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span class="badge bg-primary"><t t-out="u.group_count"/></span>
+                                                    </td>
+                                                    <td class="text-center">
+                                                        <span t-if="u.is_admin" class="badge bg-danger"
+                                                              style="font-size:0.6rem;">Admin</span>
+                                                        <span t-else="" class="badge bg-success"
+                                                              style="font-size:0.6rem;">User</span>
+                                                    </td>
+                                                </tr>
+                                                <!-- Expanded: all groups -->
+                                                <t t-if="this.isUserExpanded(u.id)">
+                                                    <tr class="hst_aa_sub_row">
+                                                        <td></td>
+                                                        <td colspan="6">
+                                                            <div class="d-flex flex-wrap gap-1 py-1">
+                                                                <t t-foreach="u.groups" t-as="g" t-key="g">
+                                                                    <span class="badge bg-light text-dark"
+                                                                          style="font-size:0.65rem; border:1px solid #dee2e6;">
+                                                                        <t t-out="g"/>
+                                                                    </span>
+                                                                </t>
+                                                            </div>
+                                                            <div class="mt-1">
+                                                                <button class="btn btn-sm btn-outline-primary py-0 px-2"
+                                                                        style="font-size:0.7rem;"
+                                                                        t-on-click.stop="() => this.openUser(u.id)">
+                                                                    <i class="fa fa-external-link me-1"/>Open User
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                </t>
+                                            </t>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+
+                        </div>
+
+                        <div class="hst_aa_resize_handle" t-on-mousedown="(ev) => this.onResizeStart(ev, pid)"/>
+                    </div>
+                </t>
+            </div>
+        </div>
+    </div>
+</t>
+
+</templates>

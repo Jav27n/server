@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+
+    <record id="action_hst_access_audit" model="ir.actions.client">
+        <field name="name">Access Audit</field>
+        <field name="tag">hst_access_audit</field>
+        <field name="path">hst-access-audit</field>
+    </record>
+
+    <menuitem id="menu_hst_access_audit"
+              name="Access Audit"
+              parent="base.menu_security"
+              action="action_hst_access_audit"
+              sequence="20"
+              groups="base.group_system"/>
+
+</odoo>
